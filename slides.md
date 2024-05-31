@@ -5,7 +5,21 @@ theme: apple-basic
 
 # Load Testing with K6
 
+---
+
+# About Me
+
 Tibor Pilz
+
+- Senior Software Engineer @ Team Foundation
+- TODO: More info
+
+---
+
+# Purpose
+
+- Understand the importance of load testing
+- Learn about K6
 
 <!--
 Q: Who here maintains endpoints? Something like /bookings/student-information, etc.?
@@ -18,15 +32,40 @@ Q: How do you know? Do you measure it?
 
 ---
 
-# Terminoloy
-Load Testing vs. Stress Testing vs. Performance Testing
+# Agenda
 
+<v-clicks>
+
+1. Understanding Load Testing
+2. Introduction to K6
+3. Running K6 Tests
+4. Analyzing Results
+
+</v-clicks>
+
+
+---
+
+# Terminology
+
+<v-clicks>
+
+- **Performance Testing**
+- **Load Testing**
+- **Stress Testing**
+- **Spike Testing**
+- **Endurance Testing**
+
+</v-clicks>
+
+<!--
+https://grafana.com/load-testing/types-of-load-testing/#load-testing-vs-performance-testing
 - **Performance Testing**: Umbrella term for all tests measuring system performance
 - **Load Testing**: Generally refers to testing under expected load
 - **Stress Testing**: Testing beyond expected load
-
-
-(For simplicity, this talk will use "load testing" to loosely refer to all three.)
+- **Spike Testing**: Testing sudden load spikes
+- **Endurance Testing**: Testing over a long period
+-->
 
 ---
 
@@ -44,14 +83,38 @@ Performance metrics include response time, resource utilization, etc. Also, chec
 
 # Why Load Testing?
 
-- **Performance Dependency**: System performance changes with varying user loads.
-- **High Load Impact**: User load can affect performance and system stability.
-- **Non-Linear Scaling**: Performance can degrade exponentially under stress.
-- **Bottleneck Identification**: Identify performance bottlenecks that are not apparent under normal load conditions.
-- **Bug Detection**: Reveal concurrency issues, database deadlocks, and other bugs not seen under light loads.
+<v-clicks>
+
+- **Performance Dependency**
+- **High Load Impact**
+- **Non-Linear Scaling**
+- **Bottleneck Identification**
+- **Bug Detection**
+
+</v-clicks>
 
 <!-- 
-Specific bugs like Concurrency issues, DB Deadlocks, etc., generally occur only under high stress conditions.
+[click]
+### Performance Dependency
+System performance changes with varying user loads.
+
+[click]
+### High Load Impact
+User load can affect performance and system stability.
+
+[click]
+### Non-Linear Scaling
+Performance is not linearly scalable. For example, doubling the load might not double the response time. It might increase exponentially.
+Your system might work fine with 100 users but will start to randomly drop requests with 1000 users. The failure rate itself won't scale linearly either,
+it could be that ~900 users are fine, but the last 100 users will suddenly push the system to fail half of the requests.
+
+[click]
+### Bottleneck Identification
+Identify performance bottlenecks that are not apparent under normal load conditions.
+
+[click]
+### Bug Detection
+Reveal concurrency issues, database deadlocks, and other bugs not seen under light loads.
 -->
 
 ---
@@ -96,23 +159,10 @@ For basic testing, simple tools like shell scripts and curl can suffice.
 
 # Testing with Curl - Simple Call
 
+````md magic-move
 ```bash
 curl -s -o /dev/null -w $'%{time_total}\n' https://www.google.de
 ```
-
-Output:
-```
-0.193175
-```
-
-<!-- 
-Curl is silenced with `-s`, output redirected to `/dev/null` with `-o`, and an additional output for total connection time is defined with `-w`.
--->
-
----
-
-# Testing with Curl - GNU Parallel
-
 ```bash
 URL=https://www.google.de
 N=20
@@ -122,6 +172,29 @@ seq $N \
   | sort -n \
   > out_$N.log
 ```
+````
+
+````md magic-move
+```bash
+0.193175
+```
+```bash
+1:      0.263425
+2:      0.262657
+3:      0.258604
+4:      0.249628
+...
+```
+````
+
+<!-- 
+Curl is silenced with `-s`, output redirected to `/dev/null` with `-o`, and an additional output for total connection time is defined with `-w`.
+-->
+
+---
+
+# Testing with Curl
+
 
 Output:
 ```
@@ -187,14 +260,59 @@ K6 was acquired by Grafana Labs in 2021.
 
 ---
 
-# K6 Example
+# Anatomy of a K6 Test
 
-```javascript
-import k6 from 'k6';
+````md magic-move
+```javascript{1-2|4|6|8|10}
+import http from 'k6/http';
+import { sleep, check } from 'k6';
 
-export default function () {
-  http.get('https://google.com');
-}
+export const options = {...};
+
+export function setup() {...}
+
+export default function () {...}
+
+export function teardown(data) {...}
+
 ```
+```javascript{4-10}
+import http from 'k6/http';
+import { sleep, check } from 'k6';
+
+export const options = {
+    stages: [
+        { duration: '30s', target: 20 }, // Ramp up
+        { duration: '1m', target: 20 },  // Hold steady
+        { duration: '10s', target: 0 },  // Ramp down
+    ],
+};
+
+export function setup() {}
+
+export default function (data) {}
+
+export function teardown(data) {}
+```
+```javascript{6-13}
+import http from 'k6/http';
+import { sleep, check } from 'k6';
+
+export const options = {};
+
+export function setup() {
+  const res = http.post('https://api.example.com/auth/login', {
+    username: 'testuser',
+    password: 'testpassword',
+  });
+  const authToken = res.json('authToken');
+  return { authToken };
+}
+
+export default function (data) {...}
+
+export function teardown(data) {...}
+```
+````
 
 ---
