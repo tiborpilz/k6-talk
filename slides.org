@@ -1,0 +1,354 @@
+* Load Testing with K6
+:PROPERTIES:
+:CUSTOM_ID: load-testing-with-k6
+:END:
+
+--------------
+
+* About Me
+:PROPERTIES:
+:CUSTOM_ID: about-me
+:END:
+Tibor Pilz
+
+- Senior Software Engineer @ Team Foundation
+- TODO: More info
+
+--------------
+
+* Purpose
+:PROPERTIES:
+:CUSTOM_ID: purpose
+:END:
+- Understand the importance of load testing
+- Learn about K6
+
+#+begin_html
+  <!--
+  Q: Who here maintains endpoints? Something like /bookings/student-information, etc.?
+  Q: Who here knows, roughly, how fast these endpoints respond? Is it 100ms, 1s, 10s?
+  Q: How do you know? Do you measure it?
+
+  - Browser DevTools
+  - Monitoring
+  -->
+#+end_html
+
+--------------
+
+* Agenda
+:PROPERTIES:
+:CUSTOM_ID: agenda
+:END:
+
+1. Understanding Load Testing
+2. Introduction to K6
+3. Running K6 Tests
+4. Analyzing Results
+
+--------------
+
+* Terminology
+:PROPERTIES:
+:CUSTOM_ID: terminology
+:END:
+
+- *Performance Testing*
+- *Load Testing*
+- *Stress Testing*
+- *Spike Testing*
+- *Endurance Testing*
+
+#+begin_html
+  <!--
+  https://grafana.com/load-testing/types-of-load-testing/#load-testing-vs-performance-testing
+  - **Performance Testing**: Umbrella term for all tests measuring system performance
+  - **Load Testing**: Generally refers to testing under expected load
+  - **Stress Testing**: Testing beyond expected load
+  - **Spike Testing**: Testing sudden load spikes
+  - **Endurance Testing**: Testing over a long period
+  -->
+#+end_html
+
+--------------
+
+* What is Load Testing?
+:PROPERTIES:
+:CUSTOM_ID: what-is-load-testing
+:END:
+- *Definition*: Load testing examines how a system behaves under (heavy)
+  load.
+- *Mechanism*: Simulates multiple users and measures performance
+  metrics.
+- *Outcome*: Identifies expected performance, system limits and
+  potential bottlenecks
+
+#+begin_html
+  <!--
+  Performance metrics include response time, resource utilization, etc. Also, checks for system errors under stress.
+  -->
+#+end_html
+
+--------------
+
+* Why Load Testing?
+:PROPERTIES:
+:CUSTOM_ID: why-load-testing
+:END:
+
+- *Performance Dependency*
+- *High Load Impact*
+- *Non-Linear Scaling*
+- *Bottleneck Identification*
+- *Bug Detection*
+
+#+begin_html
+  <!-- 
+  [click]
+  ### Performance Dependency
+  System performance changes with varying user loads.
+
+  [click]
+  ### High Load Impact
+  User load can affect performance and system stability.
+
+  [click]
+  ### Non-Linear Scaling
+  Performance is not linearly scalable. For example, doubling the load might not double the response time. It might increase exponentially.
+  Your system might work fine with 100 users but will start to randomly drop requests with 1000 users. The failure rate itself won't scale linearly either,
+  it could be that ~900 users are fine, but the last 100 users will suddenly push the system to fail half of the requests.
+
+  [click]
+  ### Bottleneck Identification
+  Identify performance bottlenecks that are not apparent under normal load conditions.
+
+  [click]
+  ### Bug Detection
+  Reveal concurrency issues, database deadlocks, and other bugs not seen under light loads.
+  -->
+#+end_html
+
+--------------
+
+* What to test?
+:PROPERTIES:
+:CUSTOM_ID: what-to-test
+:END:
+- Individual routes:
+  - For example, Login:
+    1. Connect to login page
+    2. Send login request
+    3. Connect to user dashboard
+- Always test API requests
+- Sometimes test asset requests
+- Define failure conditions for routes
+
+#+begin_html
+  <!-- 
+  Technically, login might just be sending credentials to an endpoint, but for a user, it involves several steps. Hence, measuring the total time makes sense as it's irrelevant to the user whether the login request or the page load took longer.
+  -->
+#+end_html
+
+--------------
+
+* What to Measure / How to Evaluate?
+:PROPERTIES:
+:CUSTOM_ID: what-to-measure-how-to-evaluate
+:END:
+- *Error Rate*: Frequency of errors under load.
+- *Connection Times*: Key metrics include average, median, percentiles
+  (90th, 95th), minimum, and maximum times.
+  - *Average*: Overall performance.
+  - *Median*: Typical user experience.
+  - *Percentiles*: Performance for the majority of users, excluding
+    outliers.
+  - *Min/Max*: Identify extreme performance issues.
+
+#+begin_html
+  <!-- 
+  The average is not very indicative and is often mentioned just for completeness. The median is less influenced by outliers. The 90th percentile excludes the worst 10%, offering a look at the upper limits of poor performance. Percentiles help ensure a minimum quality level for most users without being skewed by outliers. Min/Max provide additional insights, like if there's an extreme delay over 1 minute.
+  -->
+#+end_html
+
+--------------
+
+* How to Test?
+:PROPERTIES:
+:CUSTOM_ID: how-to-test
+:END:
+For basic testing, simple tools like shell scripts and curl can suffice.
+
+--------------
+
+* Testing with Curl - Simple Call
+:PROPERTIES:
+:CUSTOM_ID: testing-with-curl---simple-call
+:END:
+`=md magic-move=bash curl -s -o /dev/null -w $'{time_total}\n'
+https://www.google.de
+
+#+begin_example
+```bash
+URL=https://www.google.de
+N=20
+
+seq $N \
+  | parallel -j $N "curl -o /dev/null -sL -w $'{}: {time_total}\n' $URL" \
+  | sort -n \
+  > out_$N.log
+#+end_example
+
+#+begin_example
+
+````md magic-move
+```bash
+0.193175
+```
+```bash
+1:      0.263425
+2:      0.262657
+3:      0.258604
+4:      0.249628
+...
+```
+#+end_example
+
+#+begin_html
+  <!-- 
+  Curl is silenced with `-s`, output redirected to `/dev/null` with `-o`, and an additional output for total connection time is defined with `-w`.
+  -->
+#+end_html
+
+--------------
+
+* Testing with Curl
+:PROPERTIES:
+:CUSTOM_ID: testing-with-curl
+:END:
+Output:
+
+#+begin_example
+1:      0.263425
+2:      0.262657
+3:      0.258604
+4:      0.249628
+...
+#+end_example
+
+#+begin_html
+  <!-- 
+  GNU Parallel executes commands in parallel. This is a basic use case where `seq` generates a sequence used by `parallel` to perform `N` parallel tasks, and the results are sorted and logged.
+  -->
+#+end_html
+
+--------------
+
+* Testing with Curl - GNU Datamash
+:PROPERTIES:
+:CUSTOM_ID: testing-with-curl---gnu-datamash
+:END:
+=md magic-move {at:2} ```bash{*|1|2-3} cat out_20.log \   | cut -d $'\t' -f 2 \   | datamash mean 1 median 1 max 1 min 1 --header-out ```=
+
+#+begin_example
+mean(field-1)   median(field-1) max(field-1)    min(field-1)
+0.22805215      0.2242635       0.268756        0.188365
+#+end_example
+
+#+begin_html
+  <!-- 
+  GNU Datamash is a command-line tool used here to further process the output of `parallel`, calculating statistical data like mean, median, maximum, and minimum times.
+  -->
+#+end_html
+
+--------------
+
+* Testing with Curl - Limitations
+:PROPERTIES:
+:CUSTOM_ID: testing-with-curl---limitations
+:END:
+- *Scalability*: Curl is limited to simple requests and does not scale
+  well for complex scenarios.
+
+- *Multi-Step-Scenarios*: Persisting and reusing cookies or other
+  session data is cumbersome
+
+- *Simplicity*: Curl is great for straightforward requests but falls
+  short for complex scenarios involving multiple steps, dynamic data,
+  authentication, and error handling.
+
+#+begin_html
+  <!-- 
+  Complex cases exceed simple scripting capabilities, involving multiple requests, authentication, cookies, error handling, HTML parsing, and dynamic data.
+  -->
+#+end_html
+
+--------------
+
+* K6
+:PROPERTIES:
+:CUSTOM_ID: k6
+:END:
+- CLI and scripting in JavaScript
+- Open Source and enterprise SaaS
+- Use cases: load testing and performance monitoring
+- Maintained by Grafana Labs
+
+#+begin_html
+  <!-- 
+  K6 was acquired by Grafana Labs in 2021.
+  -->
+#+end_html
+
+--------------
+
+* Anatomy of a K6 Test
+:PROPERTIES:
+:CUSTOM_ID: anatomy-of-a-k6-test
+:END:
+`=md magic-move=javascript{1-2|4|6|8|10} import http from 'k6/http';
+import { sleep, check } from 'k6';
+
+export const options = {...};
+
+export function setup() {...}
+
+export default function () {...}
+
+export function teardown(data) {...}
+
+#+begin_example
+```javascript{4-10}
+import http from 'k6/http';
+import { sleep, check } from 'k6';
+
+export const options = {
+    stages: [
+        { duration: '30s', target: 20 }, // Ramp up
+        { duration: '1m', target: 20 },  // Hold steady
+        { duration: '10s', target: 0 },  // Ramp down
+    ],
+};
+
+export function setup() {}
+
+export default function (data) {}
+
+export function teardown(data) {}
+#+end_example
+
+```javascript{6-13} import http from 'k6/http'; import { sleep, check }
+from 'k6';
+
+export const options = {};
+
+export function setup() { const res =
+http.post('https://api.example.com/auth/login', { username: 'testuser',
+password: 'testpassword', }); const authToken = res.json('authToken');
+return { authToken }; }
+
+export default function (data) {...}
+
+export function teardown(data) {...}
+
+#+begin_example
+#+end_example
