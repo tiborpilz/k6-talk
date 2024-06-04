@@ -1,9 +1,13 @@
 ---
-layout: cover
+layout: intro-image
 theme: apple-basic
+image: ./OVH-fire.jpeg
+transition: fade
+mdc: true
 ---
 
-# Load Testing with K6
+# Load Testing with k6
+June, 2024
 
 ---
 
@@ -13,13 +17,14 @@ theme: apple-basic
 
 Tibor Pilz
 
-<v-clicks>
-
 - Senior Software Engineer @ Team Foundation
 - Avid tinkerer
-- Automation obsessed
+- ~~Overengineering~~ Automation enthusiast
 
-</v-clicks>
+<div class="absolute bottom-10">
+<p><a href="https://github.com/tiborpilz">tiborpilz</a> on Github</p>
+<p><a href="https://bumscode.com/@tibor">@tibor@bumscode</a> on Mastodon</p>
+</div>
 
 <!--
 
@@ -33,7 +38,8 @@ Tibor Pilz
 [click]
 - Avid tinkerer
   - I like to play around with new technologies
-  - But also electronics - I have modded my espresso machine to be controlled by an arduino
+  - modded my espresso machine to be controlled by an Arduino
+  - Broke a lot of things in the process
   
 [click]
 - Automation obsessed
@@ -49,14 +55,10 @@ Tibor Pilz
 
 <!-- 1 Minute 30 Seocnds -->
 
-<v-clicks>
-
 1. Understanding Load Testing
-2. Introduction to K6
-3. Running K6 Tests
+2. Introduction to k6
+3. Running k6 Tests
 4. Analyzing Results
-
-</v-clicks>
 
 ---
 
@@ -124,6 +126,11 @@ How do you know?
 
 </v-clicks>
 
+<div class="absolute bottom-5 right-14 text-xs opacity-60">
+<a href="https://grafana.com/load-testing/types-of-load-testing">https://grafana.com/load-testing/types-of-load-testing</a>
+</div>
+
+
 <!--
 
 - Before we get into the details, let's clarify some terminology.
@@ -157,6 +164,9 @@ https://grafana.com/load-testing/types-of-load-testing/#load-testing-vs-performa
 
 # Why Load Testing?
 
+<div class="absolute bottom-5 right-14 text-xs opacity-60">
+https://k6.io/why-your-organization-should-perform-load-testing/
+</div>
 <!-- 3 Minutes 30 Seconds -->
 
 <v-clicks>
@@ -201,7 +211,7 @@ it could be that ~900 users are fine, but the last 100 users will suddenly push 
 
 ---
 
-# K6
+# k6
 
 <!-- 1 Minute 30 seconds -->
 
@@ -216,12 +226,12 @@ it could be that ~900 users are fine, but the last 100 users will suddenly push 
 - Uses a custom runtime written in go, allowing for high concurrency and sync-per-default behavior
 - SaaS offering includes cloud execution, results storage (using InfluxDB) and Grafana dashboards
 - The good thing is, those things can be self-configured as well
-- K6 was acquired by Grafana Labs in 2021.
+- k6 was acquired by Grafana Labs in 2021.
 -->
 
 ---
 
-# Anatomy of a K6 Test
+# Anatomy of a k6 Test
 
 ````md magic-move
 ```javascript{*|1-2}
@@ -354,3 +364,44 @@ export function teardown(data) {
   
 https://k6.io/docs/using-k6/test-lifecycle/
  -->
+
+---
+
+# Running k6 Tests
+
+```
+k6 run test.js
+```
+```bash{*|11|16}
+execution: local
+    script: test.js
+    output: -
+
+scenarios: (100.00%) 1 scenario, 20 max VUs, 2m0s max duration (incl. graceful stop):
+          * default: Up to 20 looping VUs for 1m30s over 2 stages (gracefulRampDown: 30s, gracefulStop: 30s)
+
+
+    ✓ request succeeded
+
+    checks.........................: 100.00% ✓ 1334      ✗ 0
+    data_received..................: 820 kB  9.0 kB/s
+    data_sent......................: 152 kB  1.7 kB/s
+    http_req_blocked...............: avg=3.53ms   min=1µs      med=8µs      max=258.91ms p(90)=14µs     p(95)=20µs
+    http_req_connecting............: avg=1.7ms    min=0s       med=0s       max=118.62ms p(90)=0s       p(95)=0s
+    http_req_duration..............: avg=126.49ms min=110.57ms med=114.32ms max=10.11s   p(90)=120.23ms p(95)=120.95ms
+      { expected_response:true }...: avg=126.49ms min=110.57ms med=114.32ms max=10.11s   p(90)=120.23ms p(95)=120.95ms
+    http_req_failed................: 0.00%   ✓ 0         ✗ 1334
+    http_req_receiving.............: avg=134.76µs min=17µs     med=102µs    max=2.76ms   p(90)=178µs    p(95)=233.34µs
+    http_req_sending...............: avg=38.5µs   min=3µs      med=34µs     max=1.21ms   p(90)=55µs     p(95)=65µs
+    http_req_tls_handshaking.......: avg=1.81ms   min=0s       med=0s       max=140.55ms p(90)=0s       p(95)=0s
+    http_req_waiting...............: avg=126.31ms min=110.48ms med=114.11ms max=10.11s   p(90)=120.07ms p(95)=120.81ms
+    http_reqs......................: 1334    14.649164/s
+    iteration_duration.............: avg=1.13s    min=1.11s    med=1.11s    max=11.11s   p(90)=1.12s    p(95)=1.12s
+    iterations.....................: 1334    14.649164/s
+    vus............................: 1       min=1       max=20
+    vus_max........................: 20      min=20      max=20
+
+
+running (1m31.1s), 00/20 VUs, 1334 complete and 0 interrupted iterations
+default ✓ [======================================] 00/20 VUs  1m30s
+```
