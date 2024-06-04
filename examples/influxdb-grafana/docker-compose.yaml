@@ -14,5 +14,8 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_BASIC_ENABLED=false
+      - GF_SECURITY_ALLOW_EMBEDDING=true
     volumes:
-      - ./grafana:/etc/grafana/provisioning/
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards/
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources/
+      - ./grafana/dashboards:/var/lib/grafana/dashboards/

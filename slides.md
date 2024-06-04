@@ -2,7 +2,6 @@
 layout: intro-image
 theme: apple-basic
 image: ./OVH-fire.jpeg
-transition: fade
 mdc: true
 ---
 
@@ -12,19 +11,18 @@ June, 2024
 ---
 
 # About Me
-
 <!-- 2 minutes -->
 
 Tibor Pilz
 
 - Senior Software Engineer @ Team Foundation
 - Avid tinkerer
-- ~~Overengineering~~ Automation enthusiast
+- ~~[Overengineering]{class="opacity-60"}~~ Automation enthusiast
 
-<div class="absolute bottom-10">
-<p><a href="https://github.com/tiborpilz">tiborpilz</a> on Github</p>
-<p><a href="https://bumscode.com/@tibor">@tibor@bumscode</a> on Mastodon</p>
-</div>
+::socials
+  [tiborpilz](https://github.com/tiborpilz) on Github <Github />  
+  [@tibor@bumscode](https://bumscode.com/@tibor) on Mastodon <Mastodon />
+::
 
 <!--
 
@@ -52,7 +50,6 @@ Tibor Pilz
 
 
 # Agenda
-
 <!-- 1 Minute 30 Seocnds -->
 
 1. Understanding Load Testing
@@ -63,13 +60,11 @@ Tibor Pilz
 ---
 
 # How fast is your API?
-
 <!-- 5 minutes -->
 
 How do you know?
 
-<v-clicks>
-
+::v-clicks
 - Browser Dev Tools
   - Manual process
   - Snapshot in time and environment
@@ -78,8 +73,7 @@ How do you know?
   - Real user data
   - Aggregated
   - Only current state of features & load
-
-</v-clicks>
+::
 
 <!--
 
@@ -113,23 +107,17 @@ How do you know?
 ---
 
 # Terminology
-
 <!-- 3 Minutes -->
 
-<v-clicks>
-
+::v-clicks
 - **Performance Testing**
 - **Load Testing**
 - **Stress Testing**
 - **Spike Testing**
 - **Endurance Testing**
+::
 
-</v-clicks>
-
-<div class="absolute bottom-5 right-14 text-xs opacity-60">
-<a href="https://grafana.com/load-testing/types-of-load-testing">https://grafana.com/load-testing/types-of-load-testing</a>
-</div>
-
+<Source href="https://grafana.com/load-testing/types-of-load-testing" />
 
 <!--
 
@@ -163,20 +151,17 @@ https://grafana.com/load-testing/types-of-load-testing/#load-testing-vs-performa
 ---
 
 # Why Load Testing?
-
-<div class="absolute bottom-5 right-14 text-xs opacity-60">
-https://k6.io/why-your-organization-should-perform-load-testing/
-</div>
 <!-- 3 Minutes 30 Seconds -->
 
-<v-clicks>
-
+::v-clicks
 - **Performance Dependency**
 - **Non-Linear Scaling**
 - **Bottleneck Identification**
 - **Bug Detection**
+::
 
-</v-clicks>
+
+<Source href="https://k6.io/why-your-organization-should-perform-load-testing/" />
 
 <!-- 
 
@@ -212,7 +197,6 @@ it could be that ~900 users are fine, but the last 100 users will suddenly push 
 ---
 
 # k6
-
 <!-- 1 Minute 30 seconds -->
 
 - CLI tool
@@ -232,9 +216,11 @@ it could be that ~900 users are fine, but the last 100 users will suddenly push 
 ---
 
 # Anatomy of a k6 Test
+<!-- 5 Minutes -->
 
 ````md magic-move
 ```javascript{*|1-2}
+// [!code word:setup]
 import http from 'k6/http';
 import { sleep, check } from 'k6';
 
@@ -367,6 +353,73 @@ https://k6.io/docs/using-k6/test-lifecycle/
 
 ---
 
+# Structuring Tests
+
+::v-clicks
+- **Tags**
+  - Metadata added to requests
+  - Categorize or filter results
+  - `tags` parameter in request or test options
+
+- **Groups**
+  - Logical grouping of test code
+  - Measure multiple requests together
+  - Defined using the `group` function
+  
+- **Modules**
+  - Organize test code
+  - Reusable common functionality
+  - No impact on results
+::
+
+---
+
+# Tags & Groups
+
+````md magic-move
+```javascript{*|2|3-4}
+export default function () {
+  const [commentsResponse, postsResponse] = http.batch([
+    http.get('https://api.example.com/user/comments'),
+    http.get('https://api.example.com/user/posts'),
+  ]);
+}
+```
+```javascript{3-4}
+export default function () {
+  const [commentsResponse, postsResponse] = http.batch([
+    http.get('https://api.example.com/user/comments', { tags: { service: 'User' } }),
+    http.get('https://api.example.com/user/posts', { tags: { server: 'User' } }),
+  ]);
+}
+```
+```javascript{*|2}
+export default function () {
+  group('User Profile', function () {
+    const [commentsResponse, postsResponse] = http.batch([
+      http.get('https://api.example.com/user/comments'),
+      http.get('https://api.example.com/user/posts'),
+    ]);
+  });
+}
+```
+```javascript{8}
+export default function () {
+  group('User Profile', function () {
+    const [commentsResponse, postsResponse] = http.batch([
+      http.get('https://api.example.com/user/comments'),
+      http.get('https://api.example.com/user/posts'),
+    ]);
+    
+    const firstComment = http.get(`https://api.example.com/comment/${commentsResponse[0].id}`);
+  });
+}
+```
+````
+
+---
+
+
 # Running k6 Tests
 
 ```
@@ -391,17 +444,15 @@ scenarios: (100.00%) 1 scenario, 20 max VUs, 2m0s max duration (incl. graceful s
     http_req_duration..............: avg=126.49ms min=110.57ms med=114.32ms max=10.11s   p(90)=120.23ms p(95)=120.95ms
       { expected_response:true }...: avg=126.49ms min=110.57ms med=114.32ms max=10.11s   p(90)=120.23ms p(95)=120.95ms
     http_req_failed................: 0.00%   ✓ 0         ✗ 1334
-    http_req_receiving.............: avg=134.76µs min=17µs     med=102µs    max=2.76ms   p(90)=178µs    p(95)=233.34µs
-    http_req_sending...............: avg=38.5µs   min=3µs      med=34µs     max=1.21ms   p(90)=55µs     p(95)=65µs
-    http_req_tls_handshaking.......: avg=1.81ms   min=0s       med=0s       max=140.55ms p(90)=0s       p(95)=0s
-    http_req_waiting...............: avg=126.31ms min=110.48ms med=114.11ms max=10.11s   p(90)=120.07ms p(95)=120.81ms
-    http_reqs......................: 1334    14.649164/s
-    iteration_duration.............: avg=1.13s    min=1.11s    med=1.11s    max=11.11s   p(90)=1.12s    p(95)=1.12s
-    iterations.....................: 1334    14.649164/s
-    vus............................: 1       min=1       max=20
-    vus_max........................: 20      min=20      max=20
-
-
-running (1m31.1s), 00/20 VUs, 1334 complete and 0 interrupted iterations
-default ✓ [======================================] 00/20 VUs  1m30s
+    ...
 ```
+
+---
+
+# Grafana
+
+<Transform class="h-full" :scale="0.75">
+  <iframe class="w-[133%] h-[400px]" src="http://localhost:3000/d/XKhgaUpik/k6-load-testing-results-by-groups?orgId=1&var-Measurement=http_req_duration&var-URL=http://localhost:8000&var-Group=All&var-Tag=All&from=1717480061505&to=1717480095426&theme=dark" />
+</Transform>
+
+---
