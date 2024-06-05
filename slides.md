@@ -30,8 +30,8 @@ Tibor Pilz
 - Senior Software Engineer @ Team Foundation
   - Responsible for the platform of myCampus 2.0
   - Microfrontend Orchestrator
-  - Authentication
-  - Booking Microservice that is used directly or inderectly by all microfrontends on the platform
+  - Core utilities for other Microfrontends
+  - Supply them with booking data via booking microservice
 
 [click]
 - Avid tinkerer
@@ -154,7 +154,6 @@ https://grafana.com/load-testing/types-of-load-testing/#load-testing-vs-performa
 <!-- 3 Minutes 30 Seconds -->
 
 ::v-clicks
-- **Performance Dependency**
 - **Non-Linear Scaling**
 - **Bottleneck Identification**
 - **Bug Detection**
@@ -168,10 +167,6 @@ https://grafana.com/load-testing/types-of-load-testing/#load-testing-vs-performa
 - talked about benefits of load testing over monitoring already
 - let's go into more detail
 - why not just extrapolate from monitoring data?
-
-[click]
-### Performance Dependency
-System performance changes with varying user loads.
 
 [click]
 ### Non-Linear Scaling
@@ -188,10 +183,30 @@ it could be that ~900 users are fine, but the last 100 users will suddenly push 
 
 [click]
 ### Bug Detection
+- with proper load tests, you're not only looking at response times
+  but also check the responses for correctness
 - concurrency issues
 - database deadlocks
 - cache issues
 - things you generally won't see under light loads.
+-->
+
+---
+
+# What does a Load Test look like?
+
+- Look at user journeys
+- Model realistic user behavior
+- Don't split up interactions
+- Consider only necessary requests
+
+<!--
+
+- Your tests should encompass some part of a user journey
+- If an interaction requires multiple requests in sequence, don't split them up
+- Don't include requests that are not necessary for the test
+  - This includes images, fonts, etc.
+
 -->
 
 ---
@@ -353,24 +368,56 @@ https://k6.io/docs/using-k6/test-lifecycle/
 
 ---
 
-# Structuring Tests
+# Structuring Tests and Results
 
-::v-clicks
-- **Tags**
-  - Metadata added to requests
-  - Categorize or filter results
-  - `tags` parameter in request or test options
+- Modules
+- Groups
+- Tags
 
-- **Groups**
-  - Logical grouping of test code
-  - Measure multiple requests together
-  - Defined using the `group` function
+<!--
+
+- For cases with more than one request, it's useful to structure the test code
+- 1. To keep the test code organized and maintainable
+- 2. To get more useful results
+
+- Both Modules and Groups help with that
+- Tags help with filtering and categorizing test results
+
+-->
+
+---
+
+# Modules
+
+- Built-in modules
+  - `k6/http`
+  - `k6/check`
+  - ... and more
+- Remote modules
+  - Installable via HTTP (like deno)
+  - No central registry
+- Local modules
+
+<Source href="https://k6.io/docs/using-k6/modules/" />
+
+<!--
+- We already saw an example for built-in modules, `http` and `check`
+- There's more:
+  - `html` for parsing HTML
+  - `crypto` for cryptographic functions
+  - `ws` for WebSocket testing
   
-- **Modules**
-  - Organize test code
-  - Reusable common functionality
-  - No impact on results
-::
+- you can use remote modules for more functionality
+  - These are modules that are not part of the k6 runtime
+  - They can be installed via http, similar to deno
+  - (There's no central registry)
+
+- Local modules are just files in the same directory as the test file
+  - They can be imported using relative paths
+  - They can be used to organize test code
+  - They have no impact on the test results
+  
+-->
 
 ---
 
@@ -389,7 +436,7 @@ export default function () {
 export default function () {
   const [commentsResponse, postsResponse] = http.batch([
     http.get('https://api.example.com/user/comments', { tags: { service: 'User' } }),
-    http.get('https://api.example.com/user/posts', { tags: { server: 'User' } }),
+    http.get('https://api.example.com/user/posts', { tags: { service: 'User' } }),
   ]);
 }
 ```
@@ -417,14 +464,62 @@ export default function () {
 ```
 ````
 
+<Source href="https://k6.io/docs/using-k6/tags-and-groups/" />
+
+<!--
+- example: testing the API for a user profile page
+- two requests, one for a user's comments and one for their posts
+- hypothetical user service
+
+[click]
+- http.batch` to make them parallel (remember, k6 is sync-per-default)
+  
+[click]
+- only way to distinguish the two requests is by the URL
+- but if they are part of a larger test suite, it would be nice to know that these are part of the user service
+
+[click]
+- To add metadata to requests, we can use the `tags` parameter
+- This example tags them with `service: User`
+- Tags can be used later to filter results
+
+[click]
+- Another approach: Grouping
+
+[click]
+- Done by wrapping parts of the test in a `group` function together with a name
+- Useful for splitting up the test into logical parts
+- Also useful for measuring multiple requests together
+
+[click]
+- Add another request to the example that can only be made after the comments have been fetched
+- If we don't want to measure the duration of the individual requests, we can also measure the entire group's duration
+- Vital for testing bigger chunks of functionality
+-->
+
 ---
 
+# Execution Modes
+
+- Local
+  - Runs on your machine
+  - Surprisingly sufficient up to a thousand VUs
+- Distributed
+  - Runs on k8s using k6-operator
+  - Runs on multiple machines
+- Cloud
+  - Uses k6 Cloud SaaS
+
+---
 
 # Running k6 Tests
 
-```
+<v-clicks>
+
+```bash{*}
 k6 run test.js
 ```
+
 ```bash{*|11|16}
 execution: local
     script: test.js
@@ -447,12 +542,34 @@ scenarios: (100.00%) 1 scenario, 20 max VUs, 2m0s max duration (incl. graceful s
     ...
 ```
 
+</v-clicks>
+
+---
+
+# Output
+
+Console
+
+```bash
+k6 run test.js
+```
+
+JSON
+
+```bash
+k6 run --out json=test.json test.js
+```
+
+InfluxDB
+
+```bash
+k6 run --out influxdb=http://localhost:8086/k6 test.js
+```
+
 ---
 
 # Grafana
 
-<Transform class="h-full" :scale="0.75">
-  <iframe class="w-[133%] h-[400px]" src="http://localhost:3000/d/XKhgaUpik/k6-load-testing-results-by-groups?orgId=1&var-Measurement=http_req_duration&var-URL=http://localhost:8000&var-Group=All&var-Tag=All&from=1717480061505&to=1717480095426&theme=dark" />
-</Transform>
+<iframe class="w-[133%] h-[400px]" src="http://localhost:3000/d/XKhgaUpik/k6-load-testing-results-by-groups?orgId=1&var-Measurement=http_req_duration&var-URL=http://localhost:8000&var-Group=All&var-Tag=All&from=1717480061505&to=1717480095426&theme=dark" />
 
 ---
