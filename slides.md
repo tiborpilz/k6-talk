@@ -235,7 +235,6 @@ it could be that ~900 users are fine, but the last 100 users will suddenly push 
 
 ````md magic-move
 ```javascript{*|1-2}
-// [!code word:setup]
 import http from 'k6/http';
 import { sleep, check } from 'k6';
 
@@ -265,18 +264,25 @@ export default function (data) {...}
 
 export function teardown(data) {...}
 ```
-```javascript{6-13|12}
+```javascript{6-18|12}
 import http from 'k6/http';
 import { sleep, check } from 'k6';
 
 export const options = {...};
 
 export function setup() {
-  const res = http.post('https://api.example.com/auth/login', {
-    username: 'testuser',
-    password: 'testpassword',
+  const { domain, clientId, audience, username, password } = JSON.parse(open('./env.json'));
+
+  const tokenResponse = http.post(`https://${domain}/oauth/token`, {
+    grant_type: 'password',
+    client_id: clientId,
+    username: username,
+    password: password,
+    audience: audience,
+    scope: 'openid profile email'
   });
-  const authToken = res.json('authToken');
+
+  authToken = tokenResponse.json('access_token');
   return { authToken };
 }
 
@@ -284,7 +290,7 @@ export default function (data) {...}
 
 export function teardown(data) {...}
 ```
-```javascript{8-15|9-13|14|15}
+```javascript{8-19|9-13|14-16|17}
 import http from 'k6/http';
 import { sleep, check } from 'k6';
 
@@ -293,12 +299,14 @@ export const options = {...};
 export function setup() {...}
 
 export default function (data) {
-  const res = http.get('https://api.example.com/user', {
+  const apiResponse = http.get('https://api-dev.iu.org/myiu-booking/v1/student?forceSync=false', {
     headers: {
-      Authorization: `Bearer ${data.authToken}`,
+      Authorization: `Bearer ${authToken}`,
     },
   });
-  check(res, { 'status is 200': (r) => r.status === 200 });
+  check(apiResponse, {
+    'API request succeeded': (r) => r.status === 200,
+  });
   sleep(1);
 }
 
@@ -375,7 +383,8 @@ https://k6.io/docs/using-k6/test-lifecycle/
 - Tags
 
 <!--
-
+- For simple tests, the example above is sufficient
+- But as we said earlier, we want to test journeys
 - For cases with more than one request, it's useful to structure the test code
 - 1. To keep the test code organized and maintainable
 - 2. To get more useful results
@@ -397,6 +406,7 @@ https://k6.io/docs/using-k6/test-lifecycle/
   - Installable via HTTP (like deno)
   - No central registry
 - Local modules
+- No native support of npm modules (try a bundler)
 
 <Source href="https://k6.io/docs/using-k6/modules/" />
 
@@ -416,6 +426,10 @@ https://k6.io/docs/using-k6/test-lifecycle/
   - They can be imported using relative paths
   - They can be used to organize test code
   - They have no impact on the test results
+  
+- Due to the custom runtime, npm modules are not supported
+  - The official recommendation is to use a bundler
+  - Though you might run into compatibility issues
   
 -->
 
@@ -450,15 +464,37 @@ export default function () {
   });
 }
 ```
-```javascript{8}
+```javascript{8-11}
 export default function () {
-  group('User Profile', function () {
+  group('Profile', function () {
     const [commentsResponse, postsResponse] = http.batch([
       http.get('https://api.example.com/user/comments'),
       http.get('https://api.example.com/user/posts'),
     ]);
     
-    const firstComment = http.get(`https://api.example.com/comment/${commentsResponse[0].id}`);
+    const ids = commentsResponse.slice(0, 5).map(({ id }) => id);
+    const commentsResponse = http.batch(
+      ids.map((id) => http.get(`https://api.example.com/comment/${id}`))
+    );
+  });
+}
+```
+```javascript{2-16|3-8|10-15}
+export default function () {
+  group('Profile', function () {
+    group('Overview', function () {
+      const [commentsResponse, postsResponse] = http.batch([
+        http.get('https://api.example.com/user/comments'),
+        http.get('https://api.example.com/user/posts'),
+      ]);
+    });
+    
+    group('Comments', function () {
+      const ids = commentsResponse.slice(0, 5).map(({ id }) => id);
+      const commentsResponse = http.batch(
+        ids.map((id) => http.get(`https://api.example.com/comment/${id}`))
+      );
+    });
   });
 }
 ```
@@ -499,6 +535,17 @@ export default function () {
 
 ---
 
+# Typescript Support
+
+- No built-in support for typescript
+- `@types/k6` for type definitions
+- `grafana/k6-template-typescript` for webpack setup
+  - (Bonus: can bundle npm modules)
+  
+<Source href="https://github.com/grafana/k6-template-typescript" />
+
+---
+
 # Execution Modes
 
 - Local
@@ -520,7 +567,7 @@ export default function () {
 k6 run test.js
 ```
 
-```bash{*|11|16}
+```bash{*|11|14-16|16}
 execution: local
     script: test.js
     output: -
@@ -567,9 +614,9 @@ k6 run --out influxdb=http://localhost:8086/k6 test.js
 ```
 
 ---
+layout: fullscreen
+---
 
-# Grafana
-
-<iframe class="w-[133%] h-[400px]" src="http://localhost:3000/d/XKhgaUpik/k6-load-testing-results-by-groups?orgId=1&var-Measurement=http_req_duration&var-URL=http://localhost:8000&var-Group=All&var-Tag=All&from=1717480061505&to=1717480095426&theme=dark" />
+<iframe class="w-full h-full" src="http://localhost:3000/d/XKhgaUpik/k6-load-testing-results-by-groups?orgId=1&var-Measurement=http_req_duration&var-URL=http://localhost:8000&var-Group=All&var-Tag=All&from=1717480061505&to=1717480095426&theme=dark" />
 
 ---

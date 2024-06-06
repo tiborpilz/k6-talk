@@ -1,6 +1,5 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { SharedArray } from 'k6/data';
 
 const env = JSON.parse(open('./env.json'));
 
@@ -15,7 +14,7 @@ function getToken() {
     username: username,
     password: password,
     audience: audience,
-    scope: 'openid profile email' // Adjust scopes based on your needs
+    scope: 'openid profile email'
   });
 
   // Check if the token request was successful
@@ -45,5 +44,5 @@ export default function () {
     'API request succeeded': (r) => r.status === 200,
   });
 
-  sleep(1); // Adjust the sleep time based on your needs
+  sleep(1);
 }
