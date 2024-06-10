@@ -1,7 +1,6 @@
 ---
 layout: intro-image
 theme: apple-basic
-image: ./OVH-fire.jpeg
 mdc: true
 ---
 
@@ -11,7 +10,6 @@ June, 2024
 ---
 
 # About Me
-<!-- 2 minutes -->
 
 Tibor Pilz
 
@@ -29,9 +27,7 @@ Tibor Pilz
 [click]
 - Senior Software Engineer @ Team Foundation
   - Responsible for the platform of myCampus 2.0
-  - Microfrontend Orchestrator
-  - Core utilities for other Microfrontends
-  - Supply them with booking data via booking microservice
+  - Including the microfrontend orchestrator & core utilities
 
 [click]
 - Avid tinkerer
@@ -44,13 +40,15 @@ Tibor Pilz
   - I like to automate things
   - If I'm doing something more than once, you can bet that I'm spending hours building an automation
     even if only it takes 30 minutes twice a year.
+    
+- Prior experience with load testing:
+  - Tested an application for a client at my previous job
+  - Purpose: Find out how many user the system can handle before it hits 2 seconds response time or breaks
 -->
 
 ---
 
-
 # Agenda
-<!-- 1 Minute 30 Seocnds -->
 
 1. Understanding Load Testing
 2. Introduction to k6
@@ -107,7 +105,6 @@ How do you know?
 ---
 
 # Terminology
-<!-- 3 Minutes -->
 
 ::v-clicks
 - **Performance Testing**
@@ -151,7 +148,6 @@ https://grafana.com/load-testing/types-of-load-testing/#load-testing-vs-performa
 ---
 
 # Why Load Testing?
-<!-- 3 Minutes 30 Seconds -->
 
 ::v-clicks
 - **Non-Linear Scaling**
@@ -212,7 +208,6 @@ it could be that ~900 users are fine, but the last 100 users will suddenly push 
 ---
 
 # k6
-<!-- 1 Minute 30 seconds -->
 
 - CLI tool
 - Scripted tests written in Javascript
@@ -231,7 +226,6 @@ it could be that ~900 users are fine, but the last 100 users will suddenly push 
 ---
 
 # Anatomy of a k6 Test
-<!-- 5 Minutes -->
 
 ````md magic-move
 ```javascript{*|1-2}
@@ -242,7 +236,7 @@ export const options = {...};
 
 export function setup() {...}
 
-export default function () {...}
+export default function (data) {...}
 
 export function teardown(data) {...}
 
@@ -264,23 +258,20 @@ export default function (data) {...}
 
 export function teardown(data) {...}
 ```
-```javascript{6-18|12}
+```javascript{6-17|16}
 import http from 'k6/http';
 import { sleep, check } from 'k6';
 
 export const options = {...};
 
 export function setup() {
-  const { domain, clientId, audience, username, password } = JSON.parse(open('./env.json'));
-
-  const tokenResponse = http.post(`https://${domain}/oauth/token`, {
+  const { username, password } = JSON.parse(open('./env.json'));
+  
+  const tokenResponse = http.post('https://api.example.com/oauth/token', {
     grant_type: 'password',
-    client_id: clientId,
-    username: username,
-    password: password,
-    audience: audience,
-    scope: 'openid profile email'
-  });
+    username,
+    password,
+  })
 
   authToken = tokenResponse.json('access_token');
   return { authToken };
@@ -320,7 +311,7 @@ export const options = {...};
 
 export function setup() {...}
 
-export default function () {...}
+export default function (data) {...}
 
 export function teardown(data) {
   // Clean up resources, call a webhook, etc.
@@ -399,8 +390,8 @@ https://k6.io/docs/using-k6/test-lifecycle/
 # Modules
 
 - Built-in modules
+  - `k6`
   - `k6/http`
-  - `k6/check`
   - ... and more
 - Remote modules
   - Installable via HTTP (like deno)
@@ -441,16 +432,16 @@ https://k6.io/docs/using-k6/test-lifecycle/
 ```javascript{*|2|3-4}
 export default function () {
   const [commentsResponse, postsResponse] = http.batch([
-    http.get('https://api.example.com/user/comments'),
-    http.get('https://api.example.com/user/posts'),
+    ['GET', 'https://api.example.com/user/comments'],
+    ['GET', 'https://api.example.com/user/posts'],
   ]);
 }
 ```
 ```javascript{3-4}
 export default function () {
   const [commentsResponse, postsResponse] = http.batch([
-    http.get('https://api.example.com/user/comments', { tags: { service: 'User' } }),
-    http.get('https://api.example.com/user/posts', { tags: { service: 'User' } }),
+    ['GET', 'https://api.example.com/user/comments', { tags: { service: 'User' } }],
+    ['GET', 'https://api.example.com/user/posts', { tags: { service: 'User' } }],
   ]);
 }
 ```
@@ -458,8 +449,8 @@ export default function () {
 export default function () {
   group('User Profile', function () {
     const [commentsResponse, postsResponse] = http.batch([
-      http.get('https://api.example.com/user/comments'),
-      http.get('https://api.example.com/user/posts'),
+      ['GET', 'https://api.example.com/user/comments'],
+      ['GET', 'https://api.example.com/user/posts'],
     ]);
   });
 }
@@ -468,8 +459,8 @@ export default function () {
 export default function () {
   group('Profile', function () {
     const [commentsResponse, postsResponse] = http.batch([
-      http.get('https://api.example.com/user/comments'),
-      http.get('https://api.example.com/user/posts'),
+      ['GET', 'https://api.example.com/user/comments'],
+      ['GET', 'https://api.example.com/user/posts'],
     ]);
     
     const ids = commentsResponse.slice(0, 5).map(({ id }) => id);
@@ -484,15 +475,15 @@ export default function () {
   group('Profile', function () {
     group('Overview', function () {
       const [commentsResponse, postsResponse] = http.batch([
-        http.get('https://api.example.com/user/comments'),
-        http.get('https://api.example.com/user/posts'),
+        ['GET', 'https://api.example.com/user/comments'],
+        ['GET', 'https://api.example.com/user/posts'],
       ]);
     });
     
     group('Comments', function () {
       const ids = commentsResponse.slice(0, 5).map(({ id }) => id);
       const commentsResponse = http.batch(
-        ids.map((id) => http.get(`https://api.example.com/comment/${id}`))
+        ids.map((id) => ['GET', `https://api.example.com/comment/${id}`])
       );
     });
   });
@@ -546,6 +537,22 @@ export default function () {
 
 ---
 
+# Record tests
+- Browser Recorder
+  - Chrome & Firefox extension
+  - Records browser interactions
+  - Saves as k6 test
+  
+- HAR to k6 converter
+  - Convert browser network logs to k6 tests
+
+- Need to be cleaned up
+- No dynamic data
+
+<Source href="https://k6.io/docs/test-authoring/create-tests-from-recordings/" />
+
+---
+
 # Execution Modes
 
 - Local
@@ -560,8 +567,6 @@ export default function () {
 ---
 
 # Running k6 Tests
-
-<v-clicks>
 
 ```bash{*}
 k6 run test.js
@@ -589,34 +594,88 @@ scenarios: (100.00%) 1 scenario, 20 max VUs, 2m0s max duration (incl. graceful s
     ...
 ```
 
-</v-clicks>
+<!--
+
+- Running a test with `k6 run test.js` will execute the test and output a summary
+
+- Summary of some general information
+  - execution mode
+  - script file
+  - output format (if any, more on that later)
+  - number of VUs, stages - the duration
+  - Graceful stop keeps the VUs running for a bit (default 30 seconds) to finish their current iteration
+  - Otherwise there'd be errors at the end of the test
+
+[click]
+- Shows how many checks failed
+
+[click]
+- Shows metrics for all requests
+- It splits up the http metrics into parts of the request, like blocked, connecting etc.
+  (there's more metrics, truncated here)
+  
+[click]
+- Also shows metrics for the entire http duration
+- While helpful as an overview, since this is aggregated accross all requests, it's not useful for actual insights
+
+-->
 
 ---
 
 # Output
 
-Console
+<v-clicks>
 
-```bash
-k6 run test.js
-```
+- Console
+  ```bash
+  k6 run test.js
+  ```
 
-JSON
+- JSON
+  ```bash
+  k6 run --out json=test.json test.js
+  ```
 
-```bash
-k6 run --out json=test.json test.js
-```
+- InfluxDB
+  ```bash
+  k6 run --out influxdb=http://localhost:8086/k6 test.js
+  ```
 
-InfluxDB
+</v-clicks>
 
-```bash
-k6 run --out influxdb=http://localhost:8086/k6 test.js
-```
+---
+
+# InfluxDB & Grafana
+
+<v-clicks>
+
+- InfluxDB
+  - Time-series database
+  - Stores individual request data
+- Grafana
+  - Visualization tool
+  - Connects to InfluxDB
+- Can both be run locally via `docker-compose`
+
+</v-clicks>
 
 ---
 layout: fullscreen
 ---
 
-<iframe class="w-full h-full" src="http://localhost:3000/d/XKhgaUpik/k6-load-testing-results-by-groups?orgId=1&var-Measurement=http_req_duration&var-URL=http://localhost:8000&var-Group=All&var-Tag=All&from=1717480061505&to=1717480095426&theme=dark" />
+<iframe class="w-full h-full" src="http://localhost:3000/d/XKhgaUpik/k6-load-testing-results-by-groups?orgId=1&var-Measurement=http_req_duration&var-URL=All&var-Group=All&var-Tag=All&from=1717661751437&to=1717662118017" />
 
 ---
+
+# (Unsorted) Thoughts & Outlook
+
+- Load testing should be a team's responsibility
+- Shared functionality in k6 framework looks like a good way to go
+- k6 go extensions seem pretty cool
+
+---
+
+# Fin
+
+- Thanks for listening!
+- Questions?
