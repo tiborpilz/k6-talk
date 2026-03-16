@@ -5,46 +5,6 @@ mdc: true
 ---
 
 # Load Testing with k6
-June, 2024
-
----
-
-# About Me
-
-Tibor Pilz
-
-- Senior Software Engineer @ Team Foundation
-- Avid tinkerer
-- ~~[Overengineering]{class="opacity-60"}~~ Automation enthusiast
-
-::socials
-  [tiborpilz](https://github.com/tiborpilz) on Github <Github />  
-  [@tibor@bumscode](https://bumscode.com/@tibor) on Mastodon <Mastodon />
-::
-
-<!--
-
-[click]
-- Senior Software Engineer @ Team Foundation
-  - Responsible for the platform of myCampus 2.0
-  - Including the microfrontend orchestrator & core utilities
-
-[click]
-- Avid tinkerer
-  - I like to play around with new technologies
-  - modded my espresso machine to be controlled by an Arduino
-  - Broke a lot of things in the process
-  
-[click]
-- Automation obsessed
-  - I like to automate things
-  - If I'm doing something more than once, you can bet that I'm spending hours building an automation
-    even if only it takes 30 minutes twice a year.
-    
-- Prior experience with load testing:
-  - Tested an application for a client at my previous job
-  - Purpose: Find out how many user the system can handle before it hits 2 seconds response time or breaks
--->
 
 ---
 
@@ -144,6 +104,12 @@ How do you know?
 
 https://grafana.com/load-testing/types-of-load-testing/#load-testing-vs-performance-testing
 -->
+
+---
+
+# Non-Linear Scaling
+
+TODO: Slide comparing constant, linear, exponential and "real-world" scaling (constant first, then linear, then exponential, then broken)
 
 ---
 
@@ -290,7 +256,7 @@ export const options = {...};
 export function setup() {...}
 
 export default function (data) {
-  const apiResponse = http.get('https://api-dev.iu.org/myiu-booking/v1/student?forceSync=false', {
+  const apiResponse = http.get('https://api.example.com', {
     headers: {
       Authorization: `Bearer ${authToken}`,
     },
