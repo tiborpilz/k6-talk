@@ -106,19 +106,86 @@ https://grafana.com/load-testing/types-of-load-testing/#load-testing-vs-performa
 -->
 
 ---
+clicks: 2
+---
 
-# Non-Linear Scaling
+## Assumption: No Scaling
 
-TODO: Slide comparing constant, linear, exponential and "real-world" scaling (constant first, then linear, then exponential, then broken)
+<br/>
+
+<AnimatedGraph
+:points="[[5,20],[80,20]]"
+color="#AAAAAA"
+x-label="Users"
+y-label="Latency"
+:width="800"
+:height="400"
+:points-per-click="1"
+/>
+
+---
+clicks: 2
+---
+
+## Assumption: Linear Scaling
+
+<br/>
+
+<AnimatedGraph
+:points="[[5,20],[80,80]]"
+color="#AAAAAA"
+x-label="Users"
+y-label="Latency"
+:width="800"
+:height="400"
+:points-per-click="1"
+/>
+
+---
+clicks: 4
+---
+
+## Assumption: Exponential Scaling
+
+<br/>
+
+<AnimatedGraph
+:points="[[5,20],[50,25],[70,40],[80,90]]"
+x-label="Users"
+y-label="Latency"
+:width="800"
+:height="400"
+:points-per-click="1"
+/>
+
+---
+clicks: 6
+---
+
+## More Realistic Scenario
+
+<br/>
+
+<AnimatedGraph
+:points="[[5,20],[50,25],[65,40],[70,90],[80,20],[81,50],[70,30],[80,25],[90,30]]"
+color="#AAAAAA"
+x-label="Users"
+y-label="Latency"
+:width="800"
+:height="400"
+:steps-per-click="[1, 2, 1, 1, 2, 2]"
+:labels="{ 6: '???', 8: 'wat' }"
+/>
 
 ---
 
 # Why Load Testing?
 
 ::v-clicks
-- **Non-Linear Scaling**
-- **Bottleneck Identification**
-- **Bug Detection**
+- Non-Linear Scaling
+- Identify Bottlenecks
+- Find Bugs
+- Verify Security
 ::
 
 

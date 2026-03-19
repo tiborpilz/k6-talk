@@ -1,4 +1,4 @@
-const express = require('express');
+import express from 'express';
 
 const app = express();
 let concurrentUsers = 0;
@@ -28,7 +28,6 @@ app.get('/a', async (_, res) => {
   console.log(`Waiting for ${time}ms`);
   await new Promise((resolve) => setTimeout(resolve, time));
   res.send('Ok');
-  // concurrentUsers--;
 });
 
 app.get('/b', async (_, res) => {
@@ -37,7 +36,6 @@ app.get('/b', async (_, res) => {
 
   if (Math.random() < errorChance) {
     res.status(500).send('Server error');
-    // concurrentUsers--;
     return;
   }
 
@@ -46,7 +44,6 @@ app.get('/b', async (_, res) => {
   console.log(`Waiting for ${time}ms`);
   await new Promise((resolve) => setTimeout(resolve, time));
   res.send('Ok');
-  // concurrentUsers--;
 });
 
 const PORT = process.env.PORT || 8000;
