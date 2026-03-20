@@ -18,7 +18,6 @@ mdc: true
 ---
 
 # How fast is your API?
-<!-- 5 minutes -->
 
 How do you know?
 
@@ -35,11 +34,12 @@ How do you know?
 
 <!--
 
-- guessing most people maintain some sort of endpoint
+- guessing most people here work with some API endpoints
+- either from the backend maintaining them, or from the frontend consuming them
 - have some idea of how fast they are
 - maybe not absolute numbers, but relative to each other
   - there's the fast one that you don't even think about
-  - there's the slow one - the one that processes a pdf or depends on a slow third-party service (careful with those)
+  - there's the slow one - the one that cause headaches and that are responsible for making a page feel slow
 - But how do you know?
 
 [click]
@@ -58,7 +58,7 @@ How do you know?
   - both in terms of amount of users
   - and in terms of features
   - Can the feature you have been working for months on actually handle the load you expect?
-  - Can your system handle a new intake of students, bigger than the ones seen before?
+  - Can your system handle a new intake of users, bigger than the ones seen before?
 
 -->
 
@@ -85,7 +85,7 @@ How do you know?
 [click]
 - **Load Testing**: Tests using synthetic load
   - If used specifically, refers to the expected load
-  - For example, if you expect 100k students doing 100 requests per minute, that's your aim
+  - For example, if you expect 100k users doing 100 requests per minute, that's your aim
   - Generally, any test involving synthetic load
   - This is also the definition we'll use today
 [click]
@@ -123,6 +123,12 @@ y-label="Latency"
 :points-per-click="1"
 />
 
+<!--
+- Common assumption: performance is not impacted by load
+- Constant latency regardless of the number of users
+- In reality, this is rarely the case
+-->
+
 ---
 clicks: 2
 ---
@@ -141,6 +147,11 @@ y-label="Latency"
 :points-per-click="1"
 />
 
+<!--
+- "If I double the load, the latency will also double"
+- Also not realistic, maybe for a small range of users
+-->
+
 ---
 clicks: 4
 ---
@@ -158,8 +169,14 @@ y-label="Latency"
 :points-per-click="1"
 />
 
+<!--
+
+Closer to reality, system will start to struggle when it hits some bottlenecks
+
+-->
+
 ---
-clicks: 6
+clicks: 8
 ---
 
 ## More Realistic Scenario
@@ -173,29 +190,30 @@ x-label="Users"
 y-label="Latency"
 :width="800"
 :height="400"
-:steps-per-click="[1, 2, 1, 1, 2, 2]"
+:steps-per-click="[1, 2, 1, 1, 1, 1, 2]"
 :labels="{ 6: '???', 8: 'wat' }"
 />
+
+<!--
+
+In reality, once you hit a breaking point, the system might start to randomly drop requests, or have a very high latency for some users but not others
+
+Once you're at that point, here be dragons
+
+-->
 
 ---
 
 # Why Load Testing?
 
-::v-clicks
 - Non-Linear Scaling
 - Identify Bottlenecks
 - Find Bugs
 - Verify Security
-::
-
 
 <Source href="https://k6.io/why-your-organization-should-perform-load-testing/" />
 
 <!-- 
-
-- talked about benefits of load testing over monitoring already
-- let's go into more detail
-- why not just extrapolate from monitoring data?
 
 [click]
 ### Non-Linear Scaling
@@ -218,6 +236,14 @@ it could be that ~900 users are fine, but the last 100 users will suddenly push 
 - database deadlocks
 - cache issues
 - things you generally won't see under light loads.
+
+
+[click]
+### Security Verification
+- Load testing can also be used to verify security measures
+- For example, you can test whether rate limiting is working as expected
+- You can also test whether your system can handle a DDoS attack (though this is very similar to stress testing)
+- Cache mismatches can also lead to security issues, for example if a cache is shared between users and not properly invalidated, it could lead to data leaks under load
 -->
 
 ---
@@ -250,9 +276,9 @@ it could be that ~900 users are fine, but the last 100 users will suddenly push 
 
 <!-- 
 - CLI tool that executes tests written in Javascript
-- Uses a custom runtime written in go, allowing for high concurrency and sync-per-default behavior
-- SaaS offering includes cloud execution, results storage (using InfluxDB) and Grafana dashboards
-- The good thing is, those things can be self-configured as well
+- Uses a custom runtime written in go, allowing for high concurrency and synchronous-per-default behavior
+- SaaS offering includes cloud execution, managed results storage (using InfluxDB) and Grafana dashboards
+- The good thing is, those things can be self-hosted as well
 - k6 was acquired by Grafana Labs in 2021.
 -->
 
@@ -381,9 +407,11 @@ export function teardown(data) {
   
 [click]
   - The request has been made synchronously
+  - k6 will save these underlying metrics for you, so you only need to make the request
   
 [click]
   - it can be checked immediately - checks are used to verify the response
+  - Check results are also included in the test results later on
   
 [click]
   - After the request, the virtual user sleeps for 1 second because otherwise, it would just hammer the server with requests
@@ -396,7 +424,7 @@ export function teardown(data) {
   
   
 https://k6.io/docs/using-k6/test-lifecycle/
- -->
+-->
 
 ---
 
@@ -571,13 +599,14 @@ export default function () {
 ---
 
 # Record tests
+- HAR to k6 converter
+  - Save browser network logs as HAR files
+  - Convert to k6 tests
+
 - Browser Recorder
   - Chrome & Firefox extension
   - Records browser interactions
   - Saves as k6 test
-  
-- HAR to k6 converter
-  - Convert browser network logs to k6 tests
 
 - Need to be cleaned up
 - No dynamic data
@@ -680,8 +709,6 @@ scenarios: (100.00%) 1 scenario, 20 max VUs, 2m0s max duration (incl. graceful s
 
 # InfluxDB & Grafana
 
-<v-clicks>
-
 - InfluxDB
   - Time-series database
   - Stores individual request data
@@ -690,18 +717,94 @@ scenarios: (100.00%) 1 scenario, 20 max VUs, 2m0s max duration (incl. graceful s
   - Connects to InfluxDB
 - Can both be run locally via `docker-compose`
 
-</v-clicks>
+<!--
+
+InfluxDB is a time-series database, which is very useful for load tests. k6 will store individual request data in InfluxDB, which allows you to do more detailed analysis of the results.
+
+Grafana is a visualization tool for pretty graphs and can connect to InfluxDB
+
+-->
+
+---
+
+# Terminology Part 2: Electric Boogaloo
+
+- Virtual Users (VUs)
+  - Parallel test execution
+  - Don't map 1:1 to real users
+
+- Requests per second
+
+- Mean, Median, Percentiles
+
+<!--
+- Virtual Users (VUs) are the parallel execution units of k6
+- It's borderline impossible to map them 1:1 to real users, because:
+  - Do you mean totally signed up users?
+  - Do you mean currently active users?
+  - How often do users internact with the system?
+- It's more useful to think of concurrent executions, _and_ to consider the number of requests per second
+
+- When looking at the results, it's important to understand the difference between mean, median and percentiles
+- Mean (commonly called "average") is the total duration of all requests divided by the number of requests
+- This is skewed by outliers, for example if you have a few requests that take a very long time, the mean will be much higher than the typical request duration
+- Median is the middle value when you sort all request durations, so 50% of requests are faster than the median and 50% are slower
+- Percentiles are similar to median, but instead of 50%, you can look at any percentage, for example the 90th percentile is the value below which 90% of requests fall
+- This is useful if you want to know how your system performs for the majority of users, with an acceptable level of outliers
+-->
+
+---
+
+# Interpreting Results
+<div v-click="1">
+  <blockquote style="font-size:22px" class="italic">
+    <span v-mark.strike-through="{ at: 2, color: 'white' }">
+      “Our system can support 100k users”
+    </span>
+  </blockquote>
+</div>
+
+<br>
+
+<div v-click="3">
+  <blockquote style="font-size:22px" class="italic">
+    <span v-mark.strike-through="{ at: 4, color: 'white' }">
+      “For 100 requests per second, we have an average latency of 100ms”
+    </span>
+  </blockquote>
+</div>
+
+<br>
+
+<div v-click="5">
+  <blockquote style="font-size:22px" class="italic">
+    “Our system can support 100 requests per second without errors, with a 95th percentile latency of 120ms”
+  </blockquote>
+</div>
+
+<!--
+- Interpret output in a meaningful way
+- "Our system can support 100k users" is guesswork 
+  - What does that even mean? How many are active? How often do they interact with the system?
+- "Our system can support 100 requests per second with an average latency of 100ms"
+  - Better. But what does "average" mean? Do all users experience 100ms? What about dropped requests?
+
+- Last one is based on cold hard facts. It's also a mouthful. Connecting this to real-world scenarios (how many active users does that mean) is the next step. (And it's really hard)
+
+- Especially when talking to non-technical stakeholders, it's important to keep these differences in mind. Be careful with terms like "Virtual Users" and "Average Latency"
+-->
 
 ---
 layout: fullscreen
 ---
 
-<iframe class="w-full h-full" src="http://localhost:3000/d/XKhgaUpik/k6-load-testing-results-by-groups?orgId=1&var-Measurement=http_req_duration&var-URL=All&var-Group=All&var-Tag=All&from=1717661751437&to=1717662118017" />
+<iframe class="w-full h-full" src="http://localhost:3000/d/XKhgaUpik/k6-load-testing-results-by-groups?orgId=1&from=1773760179063&to=1773760521576" />
 
 ---
 
 # (Unsorted) Thoughts & Outlook
 
+- Announce and align running load tests (!)
 - Load testing should be a team's responsibility
 - Shared functionality in k6 framework looks like a good way to go
 - k6 go extensions seem pretty cool
